@@ -1,0 +1,21 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": { "major": 3, "minor": 24 },
+    "configurePresets": [
+      {
+        "name": "win-msvc",
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/build/win-msvc",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+          "CMAKE_TOOLCHAIN_FILE": "${env.VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+          "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        },
+        "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+      }
+    ],
+    "buildPresets": [
+      { "name": "build-win", "configurePreset": "win-msvc" }
+    ]
+  }
+  

@@ -3,5 +3,5 @@
   "cmake.generator": "Ninja",
   "cmake.buildDirectory": "build",
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-  "clangd.arguments": ["--compile-commands-dir=build", "--all-scopes-completion"]
+  "clangd.arguments": ["--compile-commands-dir=build/win-msvc", "--all-scopes-completion"]
 }

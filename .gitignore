@@ -1,0 +1,69 @@
+# --- Build output (CMake/Ninja/Make) ---
+/build/
+/build-*/
+ /out/
+/dist/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+Makefile
+compile_commands.json
+.ninja_deps
+.ninja_log
+
+# --- Visual Studio / MSVC intermediates ---
+.vs/
+*.VC.db
+*.VC.VC.opendb
+*.opendb
+*.obj
+*.idb
+*.pdb
+*.ilk
+*.ipdb
+*.iobj
+*.tlog/
+*.lastbuildstate
+*.cache
+*.log
+*.sdf
+*.suo
+*.user
+*.userosscache
+*.rsuser
+*.aps
+*.ncb
+*.tlh
+*.tli
+*.exp
+*.lib
+*.exe
+*.dll
+
+# --- Xcode / macOS ---
+*.DS_Store
+*.dSYM/
+*.xcuserstate
+*.app/
+
+# --- CLion / JetBrains ---
+.idea/
+
+# --- VS Code (keep workspace files; ignore temp) ---
+.vscode/ipch/
+.vscode/*.db
+.vscode/.cmake
+# (Do NOT ignore .vscode/settings.json or .vscode/extensions.json)
+
+# --- OS cruft ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Profiler traces ---
+*.tracy
+
+# --- Generated assets (adjust if you add these) ---
+shaders/bin/
+assets/generated/

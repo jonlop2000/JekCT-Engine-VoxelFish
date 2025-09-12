@@ -29,23 +29,57 @@ struct PosNormalVertex {
         bgfx::VertexLayout l;
         l.begin()
          .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-         .add(bgfx::Attrib::Normal,   3, bgfx::AttribType::Float)
+         .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
          .end();
         return l;
     }
 };
 
 static const PosNormalVertex s_cubeVerts[] = {
-    {-1,-1, 1, 0,0,1}, { 1,-1, 1, 0,0,1}, { 1, 1, 1, 0,0,1}, {-1, 1, 1, 0,0,1},
-    {-1,-1,-1, 0,0,-1}, {-1, 1,-1,0,0,-1}, { 1, 1,-1,0,0,-1}, { 1,-1,-1,0,0,-1},
-    {-1, 1,-1, 0,1,0}, {-1, 1, 1,0,1,0}, { 1, 1, 1,0,1,0}, { 1, 1,-1,0,1,0},
-    {-1,-1,-1, 0,-1,0}, { 1,-1,-1,0,-1,0}, { 1,-1, 1,0,-1,0}, {-1,-1, 1,0,-1,0},
-    { 1,-1,-1, 1,0,0}, { 1, 1,-1,1,0,0}, { 1, 1, 1,1,0,0}, { 1,-1, 1,1,0,0},
-    {-1,-1,-1,-1,0,0}, {-1,-1, 1,-1,0,0}, {-1, 1, 1,-1,0,0}, {-1, 1,-1,-1,0,0},
+    // Front face (z = 1) - normals point forward (0,0,1)
+    {-1, -1,  1,   0, 0, 1},
+    { 1, -1,  1,   0, 0, 1},
+    { 1,  1,  1,   0, 0, 1},
+    {-1,  1,  1,   0, 0, 1},
+    
+    // Back face (z = -1) - normals point backward (0,0,-1)
+    {-1, -1, -1,   0, 0, -1},
+    {-1,  1, -1,   0, 0, -1},
+    { 1,  1, -1,   0, 0, -1},
+    { 1, -1, -1,   0, 0, -1},
+    
+    // Top face (y = 1) - normals point up (0,1,0)
+    {-1,  1, -1,   0, 1, 0},
+    {-1,  1,  1,   0, 1, 0},
+    { 1,  1,  1,   0, 1, 0},
+    { 1,  1, -1,   0, 1, 0},
+    
+    // Bottom face (y = -1) - normals point down (0,-1,0)
+    {-1, -1, -1,   0, -1, 0},
+    { 1, -1, -1,   0, -1, 0},
+    { 1, -1,  1,   0, -1, 0},
+    {-1, -1,  1,   0, -1, 0},
+    
+    // Right face (x = 1) - normals point right (1,0,0)
+    { 1, -1, -1,   1, 0, 0},
+    { 1,  1, -1,   1, 0, 0},
+    { 1,  1,  1,   1, 0, 0},
+    { 1, -1,  1,   1, 0, 0},
+    
+    // Left face (x = -1) - normals point left (-1,0,0)
+    {-1, -1, -1,  -1, 0, 0},
+    {-1, -1,  1,  -1, 0, 0},
+    {-1,  1,  1,  -1, 0, 0},
+    {-1,  1, -1,  -1, 0, 0},
 };
+
 static const uint16_t s_cubeIndices[] = {
-    0,1,2, 0,2,3,  4,5,6, 4,6,7,  8,9,10, 8,10,11,
-    12,13,14, 12,14,15,  16,17,18, 16,18,19,  20,21,22, 20,22,23
+    0, 1, 2,  2, 3, 0, // Back
+    4, 7, 6,  6, 5, 4, // Front
+    0, 4, 5,  5, 1, 0, // Bottom
+    2, 6, 7,  7, 3, 2, // Top
+    0, 3, 7,  7, 4, 0, // Left
+    1, 5, 6,  6, 2, 1, // Right
 };
 
 
@@ -391,9 +425,10 @@ int main(int /*argc*/, char** /*argv*/)
                        BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
         
         // Set normalized light direction
-        float lightDir[4] = { 0.6f, -0.8f, 0.0f, 0.0f };
+        float lightDir[4] = { 0.3f, -0.8f, 0.5f, 0.0f };
         float len = std::sqrt(lightDir[0]*lightDir[0] + lightDir[1]*lightDir[1] + lightDir[2]*lightDir[2]);
         lightDir[0] /= len; lightDir[1] /= len; lightDir[2] /= len;
+        lightDir[3] = 0.0f;
         bgfx::setUniform(u_lightDir, lightDir);
         
         bgfx::setVertexBuffer(0, vbh);

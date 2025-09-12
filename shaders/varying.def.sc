@@ -1,2 +1,4 @@
-vec3 a_position : POSITION;
-vec2 v_dummy : TEXCOORD7;
+vec3 a_position  : POSITION;
+vec3 a_normal    : NORMAL;
+
+vec3 v_normal    : TEXCOORD0;

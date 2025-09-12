@@ -35,6 +35,24 @@ add_executable(fishbowl
   game/fishbowl/main.cpp
 )
 
+# Make headers/shaders appear in IDEs (no compile impact)
+target_sources(fishbowl PRIVATE
+  ${CMAKE_SOURCE_DIR}/engine/runtime/Camera.h
+  ${CMAKE_SOURCE_DIR}/shaders/vs_simple.sc
+  ${CMAKE_SOURCE_DIR}/shaders/fs_simple.sc
+  ${CMAKE_SOURCE_DIR}/shaders/varying.def.sc
+)
+
+# Nice folder grouping in Xcode/VS
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+source_group(TREE ${CMAKE_SOURCE_DIR} FILES
+  engine/runtime/Camera.h
+  shaders/vs_simple.sc
+  shaders/fs_simple.sc
+  shaders/varying.def.sc
+)
+
+
 # macOS bundle settings
 if(APPLE)
   set_target_properties(fishbowl PROPERTIES

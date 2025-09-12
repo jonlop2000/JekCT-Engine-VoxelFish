@@ -18,6 +18,37 @@
 
 #include "tracy/Tracy.hpp" // comment out if Tracy not set up
 
+#include "Camera.h"          // from engine_core PUBLIC include
+#include "vs_simple.bin.h"   // generated at build time
+#include "fs_simple.bin.h"
+
+struct PosNormalVertex {
+    float x, y, z;
+    float nx, ny, nz;
+    static bgfx::VertexLayout layout() {
+        bgfx::VertexLayout l;
+        l.begin()
+         .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+         .add(bgfx::Attrib::Normal,   3, bgfx::AttribType::Float)
+         .end();
+        return l;
+    }
+};
+
+static const PosNormalVertex s_cubeVerts[] = {
+    {-1,-1, 1, 0,0,1}, { 1,-1, 1, 0,0,1}, { 1, 1, 1, 0,0,1}, {-1, 1, 1, 0,0,1},
+    {-1,-1,-1, 0,0,-1}, {-1, 1,-1,0,0,-1}, { 1, 1,-1,0,0,-1}, { 1,-1,-1,0,0,-1},
+    {-1, 1,-1, 0,1,0}, {-1, 1, 1,0,1,0}, { 1, 1, 1,0,1,0}, { 1, 1,-1,0,1,0},
+    {-1,-1,-1, 0,-1,0}, { 1,-1,-1,0,-1,0}, { 1,-1, 1,0,-1,0}, {-1,-1, 1,0,-1,0},
+    { 1,-1,-1, 1,0,0}, { 1, 1,-1,1,0,0}, { 1, 1, 1,1,0,0}, { 1,-1, 1,1,0,0},
+    {-1,-1,-1,-1,0,0}, {-1,-1, 1,-1,0,0}, {-1, 1, 1,-1,0,0}, {-1, 1,-1,-1,0,0},
+};
+static const uint16_t s_cubeIndices[] = {
+    0,1,2, 0,2,3,  4,5,6, 4,6,7,  8,9,10, 8,10,11,
+    12,13,14, 12,14,15,  16,17,18, 16,18,19,  20,21,22, 20,22,23
+};
+
+
 //--------------------------------------------------------------------------------------
 // Get native window handle for bgfx::Init.platformData.{nwh, ndt} (non-Metal fallback)
 //--------------------------------------------------------------------------------------
@@ -180,6 +211,9 @@ int main(int /*argc*/, char** /*argv*/)
     init.resolution.height = (uint32_t)winH;
     init.resolution.reset  = BGFX_RESET_VSYNC;
 
+    // ---- View IDs ----
+    const bgfx::ViewId kMain = 0;
+
     if (!bgfx::init(init)) {
         std::fprintf(stderr, "bgfx::init failed.\n");
 #ifdef __APPLE__
@@ -191,12 +225,44 @@ int main(int /*argc*/, char** /*argv*/)
     }
 
     bgfx::reset((uint32_t)winW, (uint32_t)winH, init.resolution.reset);
-    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x203040ff, 1.0f, 0);
-    bgfx::setViewRect(0, 0, 0, (uint16_t)winW, (uint16_t)winH);
-    bgfx::touch(0);
+    bgfx::setViewRect(kMain, 0, 0, (uint16_t)winW, (uint16_t)winH);
+    bgfx::setViewClear(kMain, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x203040ff, 1.0f, 0);
+    bgfx::touch(kMain);
 
-    // Optional debug text
-    // bgfx::setDebug(BGFX_DEBUG_TEXT);
+    // Optional but helpful: show stats/debug so you *see* BGFX is alive.
+    bgfx::setDebug(BGFX_DEBUG_TEXT | BGFX_DEBUG_STATS);
+
+    // Create GPU resources
+    bgfx::VertexLayout vlayout = PosNormalVertex::layout();
+    bgfx::VertexBufferHandle vbh =
+        bgfx::createVertexBuffer(bgfx::makeRef(s_cubeVerts, sizeof(s_cubeVerts)), vlayout);
+    bgfx::IndexBufferHandle ibh =
+        bgfx::createIndexBuffer(bgfx::makeRef(s_cubeIndices, sizeof(s_cubeIndices)));
+
+    auto loadEmbeddedShader = [](const uint8_t* data, uint32_t size) {
+        const bgfx::Memory* mem = bgfx::copy(data, size);
+        return bgfx::createShader(mem);
+    };
+
+    bgfx::ShaderHandle vsh = loadEmbeddedShader(vs_simple, sizeof(vs_simple));
+    bgfx::ShaderHandle fsh = loadEmbeddedShader(fs_simple, sizeof(fs_simple));
+    bgfx::ProgramHandle prog = bgfx::createProgram(vsh, fsh, true);
+
+    if (!bgfx::isValid(vsh) || !bgfx::isValid(fsh) || !bgfx::isValid(prog)) {
+        std::fprintf(stderr, "Shader load/create failed.\n");
+    }
+
+    bgfx::UniformHandle u_lightDir = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
+
+
+    // ---- Camera setup ----
+    FlyCamera camera;
+    camera.pos[0] = 0; camera.pos[1] = 0; camera.pos[2] = -5;
+    
+    // ---- Input state ----
+    bool keys[256] = {false};
+    bool mouseCaptured = false;
+    int lastMouseX = 0, lastMouseY = 0;
 
     // ---- Adaptive main loop ----
     bool running = true;
@@ -225,20 +291,33 @@ int main(int /*argc*/, char** /*argv*/)
                   case SDL_QUIT: running = false; break;
                   case SDL_KEYDOWN:
                     if (e.key.keysym.sym == SDLK_ESCAPE) running = false;
+                    if (e.key.keysym.scancode < 256) keys[e.key.keysym.scancode] = true;
                     dirty = true;
                     break;
+                  case SDL_KEYUP:
+                    if (e.key.keysym.scancode < 256) keys[e.key.keysym.scancode] = false;
+                    break;
                   case SDL_MOUSEBUTTONDOWN:
-                  case SDL_MOUSEBUTTONUP:
+                    if (e.button.button == SDL_BUTTON_LEFT) {
+                        mouseCaptured = !mouseCaptured;
+                        SDL_SetRelativeMouseMode(mouseCaptured ? SDL_TRUE : SDL_FALSE);
+                        dirty = true;
+                    }
+                    break;
                   case SDL_MOUSEMOTION:
-                  case SDL_MOUSEWHEEL:
-                    dirty = true;
+                    if (mouseCaptured) {
+                        camera.yaw   -= e.motion.xrel * 0.005f;
+                        camera.pitch -= e.motion.yrel * 0.005f;
+                        camera.pitch = std::max(-1.57f, std::min(1.57f, camera.pitch));
+                        dirty = true;
+                    }
                     break;
                   case SDL_WINDOWEVENT:
                     if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
                         e.window.event == SDL_WINDOWEVENT_RESIZED) {
                         SDL_GetWindowSize(window, &winW, &winH);
                         bgfx::reset((uint32_t)winW, (uint32_t)winH, init.resolution.reset);
-                        bgfx::setViewRect(0, 0, 0, (uint16_t)winW, (uint16_t)winH);
+                        bgfx::setViewRect(kMain, 0, 0, (uint16_t)winW, (uint16_t)winH);
                         dirty = true;
                     } else if (e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
                         focused = true; dirty = true;
@@ -253,7 +332,7 @@ int main(int /*argc*/, char** /*argv*/)
 
         if (!focused) {
             SDL_Delay(1);
-            bgfx::touch(0);
+            bgfx::touch(kMain);
             FrameMark;
             bgfx::frame();
             continue;
@@ -270,11 +349,57 @@ int main(int /*argc*/, char** /*argv*/)
         }
         lastCounter = SDL_GetPerformanceCounter();
 
-        // --------- Render frame ----------
-        bgfx::touch(0);
-        // Optional debug text:
-        // bgfx::dbgTextClear();
-        // bgfx::dbgTextPrintf(1, 1, 0x0F, "Hello Voxel Fish 🐟");
+        // ---- Camera movement (WASD) ----
+        const float moveSpeed = 5.0f * (float)dt;
+        const float cy = std::cos(camera.yaw), sy = std::sin(camera.yaw);
+        const float cp = std::cos(camera.pitch), sp = std::sin(camera.pitch);
+        
+        if (keys[SDL_SCANCODE_W]) {
+            camera.pos[0] += cy * cp * moveSpeed;
+            camera.pos[1] += sp * moveSpeed;
+            camera.pos[2] += sy * cp * moveSpeed;
+        }
+        if (keys[SDL_SCANCODE_S]) {
+            camera.pos[0] -= cy * cp * moveSpeed;
+            camera.pos[1] -= sp * moveSpeed;
+            camera.pos[2] -= sy * cp * moveSpeed;
+        }
+        if (keys[SDL_SCANCODE_A]) {
+            camera.pos[0] -= sy * moveSpeed;
+            camera.pos[2] += cy * moveSpeed;
+        }
+        if (keys[SDL_SCANCODE_D]) {
+            camera.pos[0] += sy * moveSpeed;
+            camera.pos[2] -= cy * moveSpeed;
+        }
+
+        // ---- Set up views ----
+        float view[16], proj[16];
+        camera.buildViewProj(view, proj, (float)winW / winH, bgfx::getCaps()->homogeneousDepth);
+        
+        bgfx::setViewTransform(kMain, view, proj);
+        bgfx::touch(kMain); // keeps the clear active
+
+        // ---- Render cube ----
+        float mtx[16];
+        bx::mtxIdentity(mtx);
+        bgfx::setTransform(mtx);
+        
+        // Start permissive: turn off depth & culling until you see pixels.
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z
+                     /*| BGFX_STATE_DEPTH_TEST_LESS*/
+                     /*| BGFX_STATE_CULL_CW*/
+                     | BGFX_STATE_MSAA);
+        
+        // Set normalized light direction
+        float lightDir[4] = { 0.6f, -0.8f, 0.0f, 0.0f };
+        float len = std::sqrt(lightDir[0]*lightDir[0] + lightDir[1]*lightDir[1] + lightDir[2]*lightDir[2]);
+        lightDir[0] /= len; lightDir[1] /= len; lightDir[2] /= len;
+        bgfx::setUniform(u_lightDir, lightDir);
+        
+        bgfx::setVertexBuffer(0, vbh);
+        bgfx::setIndexBuffer(ibh);
+        bgfx::submit(kMain, prog);
 
         FrameMark;
         bgfx::frame();
@@ -282,6 +407,12 @@ int main(int /*argc*/, char** /*argv*/)
         dirty = false;
     }
 
+    // Cleanup GPU resources
+    bgfx::destroy(u_lightDir);
+    bgfx::destroy(prog);
+    bgfx::destroy(ibh);
+    bgfx::destroy(vbh);
+    
     bgfx::shutdown();
 #ifdef __APPLE__
     if (metalView) SDL_Metal_DestroyView(metalView);

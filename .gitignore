@@ -1,7 +1,7 @@
-# --- Build output (CMake/Ninja/Make) ---
+# --- Build output ---
 /build/
 /build-*/
- /out/
+out/              # <- remove the leading space you had before
 /dist/
 CMakeCache.txt
 CMakeFiles/
@@ -12,8 +12,19 @@ compile_commands.json
 .ninja_deps
 .ninja_log
 
-# --- Visual Studio / MSVC intermediates ---
+# vcpkg (manifest mode)
+vcpkg_installed/
+
+# CMake user-local
+CMakeUserPresets.json
+CMakeSettings.json
+
+# Visual Studio / MSBuild project files (if you ever use VS generator)
+*.sln
+*.vcxproj*
 .vs/
+
+# MSVC intermediates / binaries
 *.VC.db
 *.VC.VC.opendb
 *.opendb
@@ -27,43 +38,31 @@ compile_commands.json
 *.lastbuildstate
 *.cache
 *.log
-*.sdf
-*.suo
-*.user
-*.userosscache
-*.rsuser
-*.aps
-*.ncb
-*.tlh
-*.tli
-*.exp
 *.lib
+*.exp
 *.exe
 *.dll
 
-# --- Xcode / macOS ---
+# macOS
 *.DS_Store
 *.dSYM/
 *.xcuserstate
 *.app/
 
-# --- CLion / JetBrains ---
+# JetBrains / VS Code temps
 .idea/
-
-# --- VS Code (keep workspace files; ignore temp) ---
 .vscode/ipch/
 .vscode/*.db
 .vscode/.cmake
-# (Do NOT ignore .vscode/settings.json or .vscode/extensions.json)
 
-# --- OS cruft ---
+# OS cruft
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# --- Profiler traces ---
+# Profiler traces
 *.tracy
 
-# --- Generated assets (adjust if you add these) ---
+# Generated assets (adjust if you add these)
 shaders/bin/
 assets/generated/

@@ -74,12 +74,18 @@ static const PosNormalVertex s_cubeVerts[] = {
 };
 
 static const uint16_t s_cubeIndices[] = {
-    0, 1, 2,  2, 3, 0, // Back
-    4, 7, 6,  6, 5, 4, // Front
-    0, 4, 5,  5, 1, 0, // Bottom
-    2, 6, 7,  7, 3, 2, // Top
-    0, 3, 7,  7, 4, 0, // Left
-    1, 5, 6,  6, 2, 1, // Right
+    // Front face (CCW when viewed from outside)
+    0, 1, 2,  2, 3, 0,
+    // Back face (CCW when viewed from outside)  
+    4, 5, 6,  6, 7, 4,
+    // Top face (CCW when viewed from outside)
+    8, 9, 10, 10, 11, 8,
+    // Bottom face (CCW when viewed from outside)
+    12, 13, 14, 14, 15, 12,
+    // Right face (CCW when viewed from outside)
+    16, 17, 18, 18, 19, 16,
+    // Left face (CCW when viewed from outside)
+    20, 21, 22, 22, 23, 20,
 };
 
 
@@ -422,7 +428,7 @@ int main(int /*argc*/, char** /*argv*/)
         bgfx::setTransform(mtx);
         
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
-                       BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
+                       BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CCW | BGFX_STATE_MSAA);
         
         // Set normalized light direction
         float lightDir[4] = { 0.3f, -0.8f, 0.5f, 0.0f };

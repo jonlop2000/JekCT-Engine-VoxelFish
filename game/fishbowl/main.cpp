@@ -381,15 +381,14 @@ int main(int /*argc*/, char** /*argv*/)
         bgfx::touch(kMain); // keeps the clear active
 
         // ---- Render cube ----
-        float mtx[16];
-        bx::mtxIdentity(mtx);
+        static float t = 0.0f; t += 0.01f;
+        float rot[16]; bx::mtxRotateXY(rot, 0.0f, t);
+        float identity[16]; bx::mtxIdentity(identity);
+        float mtx[16]; bx::mtxMul(mtx, rot, identity);
         bgfx::setTransform(mtx);
         
-        // Start permissive: turn off depth & culling until you see pixels.
-        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z
-                     /*| BGFX_STATE_DEPTH_TEST_LESS*/
-                     /*| BGFX_STATE_CULL_CW*/
-                     | BGFX_STATE_MSAA);
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
+                       BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_MSAA);
         
         // Set normalized light direction
         float lightDir[4] = { 0.6f, -0.8f, 0.0f, 0.0f };

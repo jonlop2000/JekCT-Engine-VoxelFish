@@ -1,0 +1,9 @@
+{
+    "name": "voxel-fish",
+    "version-string": "0.1.0",
+    "dependencies": [
+      { "name": "sdl2", "default-features": true }
+    ],
+    "builtin-baseline": "4f8fe05871555c1798dbcb1957d0d595e94f7b57"
+  }
+  

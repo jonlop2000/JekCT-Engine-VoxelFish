@@ -17,6 +17,9 @@ endif()
 # ---- bgfx stack (expects external/bgfx.cmake with bgfx/bx/bimg submodules) ----
 add_subdirectory(external/bgfx.cmake)
 
+# ---- Engine ----
+add_subdirectory(engine)
+
 # ---- SDL2 ----
 # macOS: Homebrew (brew install sdl2) provides SDL2::SDL2 (and sometimes SDL2::SDL2main)
 # Windows: vcpkg provides the same targets
@@ -69,6 +72,9 @@ endif()
 # Tracy
 target_link_libraries(fishbowl PRIVATE tracy_client)
 
+# Engine
+target_link_libraries(fishbowl PRIVATE engine_core)
+
 # ---- macOS specifics ----
 if(APPLE)
   # Add rpaths so bundled app finds Homebrew libs if needed
@@ -104,4 +110,72 @@ endif()
 target_include_directories(fishbowl PRIVATE
   ${CMAKE_SOURCE_DIR}/external/tracy/public
   ${CMAKE_SOURCE_DIR}/external/tracy/public/tracy
+  ${CMAKE_SOURCE_DIR}/engine/runtime
 )
+
+# ---------- Shader compilation ----------
+set(BGFX_DIR ${CMAKE_SOURCE_DIR}/external/bgfx.cmake/bgfx)
+set(SHADER_DIR ${CMAKE_SOURCE_DIR}/shaders)
+set(SHADER_OUT ${CMAKE_BINARY_DIR}/generated/shaders)
+file(MAKE_DIRECTORY ${SHADER_OUT})
+
+if (NOT TARGET shaderc)
+  message(FATAL_ERROR "bgfx shaderc target not found. Ensure external/bgfx.cmake is added.")
+endif()
+
+# Platform profiles
+if (APPLE)
+  set(SH_PLATFORM osx)
+  set(VS_PROFILE metal)
+  set(FS_PROFILE metal)
+  elseif (WIN32)
+  set(SH_PLATFORM windows)
+  # Newer shaderc expects unified HLSL profile "s_5_0"
+  set(HLSL_PROFILE s_5_0)
+  set(VS_PROFILE ${HLSL_PROFILE})
+  set(FS_PROFILE ${HLSL_PROFILE})
+
+else()
+  set(SH_PLATFORM linux)
+  set(VS_PROFILE spirv)
+  set(FS_PROFILE spirv)
+endif()
+
+# Vertex shader -> C header
+add_custom_command(
+  OUTPUT ${SHADER_OUT}/vs_simple.bin.h
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADER_OUT}
+  COMMAND $<TARGET_FILE:shaderc>
+          --platform ${SH_PLATFORM} --type vertex --profile ${VS_PROFILE}
+          -f ${SHADER_DIR}/vs_simple.sc
+          -o ${SHADER_OUT}/vs_simple.bin.h
+          --bin2c vs_simple
+          --varyingdef ${SHADER_DIR}/varying.def.sc
+          -i ${BGFX_DIR}/src
+  DEPENDS shaderc ${SHADER_DIR}/vs_simple.sc ${SHADER_DIR}/varying.def.sc
+  VERBATIM)
+
+# Fragment shader -> C header
+add_custom_command(
+  OUTPUT ${SHADER_OUT}/fs_simple.bin.h
+  COMMAND $<TARGET_FILE:shaderc>
+          --platform ${SH_PLATFORM} --type fragment --profile ${FS_PROFILE}
+          -f ${SHADER_DIR}/fs_simple.sc
+          -o ${SHADER_OUT}/fs_simple.bin.h
+          --bin2c fs_simple
+          --varyingdef ${SHADER_DIR}/varying.def.sc
+          -i ${BGFX_DIR}/src
+  DEPENDS shaderc ${SHADER_DIR}/fs_simple.sc ${SHADER_DIR}/varying.def.sc
+  VERBATIM)
+
+add_custom_target(build_shaders
+  DEPENDS ${SHADER_OUT}/vs_simple.bin.h ${SHADER_OUT}/fs_simple.bin.h)
+
+# Make app depend on shaders; include generated headers
+add_dependencies(fishbowl build_shaders)
+target_include_directories(fishbowl PRIVATE ${SHADER_OUT})
+
+# (Optional) Silence benign bx warning on Clang
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(fishbowl PRIVATE -Wno-gnu-zero-variadic-macro-arguments)
+endif()
